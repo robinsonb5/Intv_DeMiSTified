@@ -51,6 +51,15 @@ ENTITY intv_core IS
     ioctl_wait        : OUT std_logic;
     ps2_key           : IN  std_logic_vector(10 DOWNTO 0);
     
+	 -- External RAM:
+	 cart_addr         : out unsigned(15 downto 0);
+	 cart_stb          : out std_logic;
+	 cart_in           : in std_logic_vector(15 downto 0);
+
+	 rom_addr         : out unsigned(15 downto 0);
+	 rom_stb          : out std_logic;
+	 rom_in           : in std_logic_vector(15 downto 0);
+	 
     -- AUDIO
     audio_l          : OUT   std_logic_vector(15 DOWNTO 0);
     audio_r          : OUT   std_logic_vector(15 DOWNTO 0)
@@ -96,17 +105,19 @@ ARCHITECTURE struct OF intv_core IS
   SIGNAL clkdiv,clkdivsnd,clkdivivoice : uint6 :=0;
   SIGNAL tick_cpu,tick_cpup,tick_snd,tick_ivoice : std_logic;
   
-  SHARED VARIABLE carth,cartl : arr_uv8(0 TO 65535);
-  ATTRIBUTE ramstyle : string;
-  ATTRIBUTE ramstyle OF carth : VARIABLE IS "no_rw_check";
-  ATTRIBUTE ramstyle OF cartl : VARIABLE IS "no_rw_check";
-  SIGNAL cad : uv16;
+--  SHARED VARIABLE carth,cartl : arr_uv8(0 TO 65535);
+--  SHARED VARIABLE carth,cartl : arr_uv8(0 TO 32767);
+--  ATTRIBUTE ramstyle : string;
+--  ATTRIBUTE ramstyle OF carth : VARIABLE IS "no_rw_check";
+--  ATTRIBUTE ramstyle OF cartl : VARIABLE IS "no_rw_check";
+--  SIGNAL cad : uv16;
   
   SIGNAL ecs2 : std_logic;
   
   SIGNAL dr,dw,ad,cart_dr,cart_dw : uv16;
   SIGNAL cart_drl,cart_drh : uv8;
   SIGNAL cart_acc : std_logic;
+  SIGNAL cart_acc_d : std_logic;
   SIGNAL snd_dr,snd_dw,snd2_dr,snd2_dw : uv8;
   SIGNAL snd_wr,snd2_wr,cart_wr : std_logic;
   SIGNAL ivoice_dr,ivoice_dw : uv16;
@@ -322,8 +333,28 @@ ARCHITECTURE struct OF intv_core IS
     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
   
   ----------------------------------------------------------
+
+    signal tick_cpu_d : std_logic_vector(3 downto 0);
+    signal rom_sel : std_logic;
 BEGIN
-  
+
+  -- external cart and rom access --
+  process(clksys) begin
+    if rising_edge(clksys) then
+	   tick_cpu_d <= tick_cpu & tick_cpu_d(3 downto 1);
+
+		cart_stb<='0';
+		if cart_acc='1' and tick_cpu_d(0)='1' then
+		  cart_stb<='1';
+		end if;
+
+		rom_stb<='0';
+		if rom_sel='1' and tick_cpu_d(0)='1' then
+		  rom_stb<='1';
+		end if;
+
+	end if;
+  end process;
   
   ----------------------------------------------------------
   
@@ -417,6 +448,9 @@ BEGIN
       rom_ecs_wr  => rom_ecs_wr,
       rom_aw      => rom_aw,
       rom_dw      => rom_dw,
+      rom_sel     => rom_sel,
+      rom_ar      => rom_addr,
+      rom_dr      => unsigned(rom_in),
       vid_r       => vga_r_u,
       vid_g       => vga_g_u,
       vid_b       => vga_b_u,
@@ -498,7 +532,8 @@ BEGIN
       ------------------------------------------------------
       idx<=to_integer(ad(15 DOWNTO 11)) + 32 * mmap;
       
-      cad<=(imap + ad(10 DOWNTO 8)) & ad(7 DOWNTO 0);
+--      cad<=(imap + ad(10 DOWNTO 8)) & ad(7 DOWNTO 0);
+      cart_addr<=(imap + ad(10 DOWNTO 8)) & ad(7 DOWNTO 0);
       
       rden<=to_unsigned(iacc,4)(0);
       wren<=to_unsigned(iacc,4)(1);
@@ -839,42 +874,44 @@ BEGIN
   ioctl_wait<=ioctl_wait_l;
   
   ----------------------------------------------------------
-  cart_dr<=(cart_drh & cart_drl) WHEN cart_acc='1' AND byen='0' ELSE
-           (x"FF" & cart_drl)    WHEN cart_acc='1' AND byen='1' ELSE x"FFFF";
+--  cart_dr<=(cart_drh & cart_drl) WHEN cart_acc='1' AND byen='0' ELSE
+--           (x"FF" & cart_drl)    WHEN cart_acc='1' AND byen='1' ELSE x"FFFF";
+  cart_dr<=(unsigned(cart_in)) WHEN cart_acc='1' AND byen='0' ELSE
+           (x"FF" & unsigned(cart_in(7 downto 0)))    WHEN cart_acc='1' AND byen='1' ELSE x"FFFF";
   
   cart_acc<=rden AND fine;
   
   ----------------------------------------------------------
   -- Icart memory
-  CartH1:PROCESS(clksys) IS
-  BEGIN
-    IF rising_edge(clksys) THEN
-      cart_drl<=cartl(to_integer(cad));
-      IF cart_wrm='1' THEN
-        cartl(to_integer(cad)):=cart_dw(7 DOWNTO 0);
-      END IF;
-      
-      cart_drh<=carth(to_integer(cad));
-      IF cart_wrm='1' THEN
-        carth(to_integer(cad)):=cart_dw(15 DOWNTO 8);
-      END IF;
-    END IF;
-  END PROCESS CartH1;
-  
-  CartH2:PROCESS(clksys) IS
-  BEGIN
-    IF rising_edge(clksys) THEN
-      IF w_wrl='1' THEN
-        cartl(to_integer(w_a)):=w_d;
-      END IF;
-      
-      IF w_wrh='1' THEN
-        carth(to_integer(w_a)):=w_d;
-      END IF;
-    END IF;
-  END PROCESS CartH2;
-  
-  cart_wrm<=cart_wr AND wren;
+--  CartH1:PROCESS(clksys) IS
+--  BEGIN
+--    IF rising_edge(clksys) THEN
+--      cart_drl<=cartl(to_integer(cad));
+--      IF cart_wrm='1' THEN
+--        cartl(to_integer(cad)):=cart_dw(7 DOWNTO 0);
+--      END IF;
+--      
+--      cart_drh<=carth(to_integer(cad));
+--      IF cart_wrm='1' THEN
+--        carth(to_integer(cad)):=cart_dw(15 DOWNTO 8);
+--      END IF;
+--    END IF;
+--  END PROCESS CartH1;
+--  
+--  CartH2:PROCESS(clksys) IS
+--  BEGIN
+--    IF rising_edge(clksys) THEN
+--      IF w_wrl='1' THEN
+--        cartl(to_integer(w_a)):=w_d;
+--      END IF;
+--      
+--      IF w_wrh='1' THEN
+--        carth(to_integer(w_a)):=w_d;
+--      END IF;
+--    END IF;
+--  END PROCESS CartH2;
+--  
+--  cart_wrm<=cart_wr AND wren;
   
   ----------------------------------------------------------
   -- ICART mapping table

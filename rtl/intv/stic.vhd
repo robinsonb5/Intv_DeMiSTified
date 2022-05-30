@@ -97,7 +97,10 @@ ENTITY stic IS
     rom_ecs_wr  : IN  std_logic;
     rom_aw      : IN  uv16;
     rom_dw      : IN  uv8;
-    
+	 rom_sel : out std_logic;
+	 rom_ar : out uv16;
+	 rom_dr : in uv16;
+
     ------------------------------------
     -- Video out
     vid_r  : OUT uv8;
@@ -441,9 +444,9 @@ ARCHITECTURE rtl OF stic IS
 
   SIGNAL ecsram : arr_uv8(0 TO 2047):=(OTHERS =>x"00"); -- 2k * 8bits
   
-  SIGNAL EXECROM_L,EXECROM_H : arr_uv8(0 TO 4095); -- Executive ROM
-  
-  SIGNAL ECSROM_L,ECSROM_H : arr_uv8(0 TO 16383); -- ECS ROM
+--  SIGNAL EXECROM_L,EXECROM_H : arr_uv8(0 TO 4095); -- Executive ROM
+--  
+--  SIGNAL ECSROM_L,ECSROM_H : arr_uv8(0 TO 16383); -- ECS ROM
   
   SIGNAL bank : arr_uv4(0 TO 15);
   
@@ -527,7 +530,20 @@ BEGIN
       snd2_dw <=dw(7 DOWNTO 0);
       ivoice_dw<=dw;
       icart_dw<=dw;
-      
+ 
+      -- Compute ECS ROM address
+      IF padrs>=16#2000# AND padrs<=16#2FFF# THEN
+        rom_ar<=padrs - X"0800"; -- Map to 0x3000 / 2 = 0x1800
+      ELSIF padrs>=16#7000# AND padrs<=16#7FFF# THEN
+        rom_ar<=padrs - X"4800"; -- Map to 0x5000 / 2 = 0x2800
+      ELSIF padrs>=16#E000# AND padrs<=16#EFFF# THEN
+        rom_ar<=padrs - X"a800"; -- Map to 0x7000 / 2 = 0x3800
+      ELSE
+        rom_ar<="0000" & to_unsigned(padrs mod 4096,12);
+      END IF;
+
+      rom_sel<='0';
+
       -- 14 bits registers
       -- 0000-0007 MOB X position regs ? ? ? Xsize VISB INTR X[7:0]
       -- 0008-000F MOB Y position regs ? ? Yflip Xflip Ysz4 Ysz2 Yres Y[6:0]
@@ -655,7 +671,9 @@ BEGIN
         
       -- EXEC --------------------------
       ELSIF padrs>=16#1000# AND padrs<=16#1FFF# THEN
-        dr<=pr_execrom;
+--        dr<=pr_execrom;
+	     rom_sel <= '1';
+        dr<=rom_dr;
         
       -- Scratch RAM -------------------
       ELSIF padrs>=16#0100# AND padrs<=16#01EF# THEN
@@ -684,13 +702,19 @@ BEGIN
         
       -- ROM ECS -----------------------
       ELSIF padrs  >=16#2000# AND padrs<=16#2FFF# AND ecs='1' AND bank(2)=x"1" THEN
-        dr<=pr_ecsrom;
+--        dr<=pr_ecsrom;
+	     rom_sel <= '1';
+        dr<=rom_dr;
         
       ELSIF padrs>=16#7000# AND padrs<=16#7FFF# AND ecs='1' AND bank(7)=x"0" THEN
-        dr<=pr_ecsrom;
+--        dr<=pr_ecsrom;
+	     rom_sel <= '1';
+        dr<=rom_dr;
         
       ELSIF padrs>=16#E000# AND padrs<=16#EFFF# AND ecs='1' AND bank(14)=x"1" THEN
-        dr<=pr_ecsrom;
+--        dr<=pr_ecsrom;
+	     rom_sel <= '1';
+        dr<=rom_dr;
         
       -- Cartridges --------------------
       ELSE
@@ -763,21 +787,21 @@ BEGIN
       pr_gram   <=gram(padrs MOD 512);
       pr_scram  <=scram(padrs MOD 256);
       pr_grom   <=GROM(padrs MOD 2048);
-      pr_execrom(7 DOWNTO 0) <=EXECROM_L(padrs MOD 4096);
-      pr_execrom(15 DOWNTO 8)<=EXECROM_H(padrs MOD 4096);
+--      pr_execrom(7 DOWNTO 0) <=EXECROM_L(padrs MOD 4096);
+--      pr_execrom(15 DOWNTO 8)<=EXECROM_H(padrs MOD 4096);
+
+--      IF padrs>=16#2000# AND padrs<=16#2FFF# THEN
+--        ad_v:=padrs - 16#2000#;
+--      ELSIF padrs>=16#7000# AND padrs<=16#7FFF# THEN
+--        ad_v:=padrs - 16#6000#;
+--      ELSIF padrs>=16#E000# AND padrs<=16#EFFF# THEN
+--        ad_v:=padrs - 16#C000#;
+--      ELSE
+--        ad_v:=padrs MOD 4096;
+--      END IF;
       
-      IF padrs>=16#2000# AND padrs<=16#2FFF# THEN
-        ad_v:=padrs - 16#2000#;
-      ELSIF padrs>=16#7000# AND padrs<=16#7FFF# THEN
-        ad_v:=padrs - 16#6000#;
-      ELSIF padrs>=16#E000# AND padrs<=16#EFFF# THEN
-        ad_v:=padrs - 16#C000#;
-      ELSE
-        ad_v:=padrs MOD 4096;
-      END IF;
-      
-      pr_ecsrom(7 DOWNTO 0) <=ECSROM_L(ad_v);
-      pr_ecsrom(15 DOWNTO 8)<=ECSROM_H(ad_v);
+--      pr_ecsrom(7 DOWNTO 0) <=ECSROM_L(ad_v);
+--      pr_ecsrom(15 DOWNTO 8)<=ECSROM_H(ad_v);
       
       r_gram <=gram(a_gmem MOD 512);
       r_sysram<=sysram(a_sysram);
@@ -792,18 +816,18 @@ BEGIN
       IF rom_grom_wr='1' THEN
         GROM(to_integer(rom_aw(10 DOWNTO 0)))<=rom_dw;
       END IF;
-      IF rom_exec_wr='1' AND rom_aw(0)='0' THEN
-        EXECROM_H(to_integer(rom_aw(12 DOWNTO 1)))<=rom_dw;
-      END IF;
-      IF rom_exec_wr='1' AND rom_aw(0)='1' THEN
-        EXECROM_L(to_integer(rom_aw(12 DOWNTO 1)))<=rom_dw;
-      END IF;
-      IF rom_ecs_wr='1' AND rom_aw(0)='0' THEN
-        ECSROM_H(to_integer(rom_aw(14 DOWNTO 1)))<=rom_dw;
-      END IF;
-      IF rom_ecs_wr='1' AND rom_aw(0)='1' THEN
-        ECSROM_L(to_integer(rom_aw(14 DOWNTO 1)))<=rom_dw;
-      END IF;
+--      IF rom_exec_wr='1' AND rom_aw(0)='0' THEN
+--        EXECROM_H(to_integer(rom_aw(12 DOWNTO 1)))<=rom_dw;
+--      END IF;
+--      IF rom_exec_wr='1' AND rom_aw(0)='1' THEN
+--        EXECROM_L(to_integer(rom_aw(12 DOWNTO 1)))<=rom_dw;
+--      END IF;
+--      IF rom_ecs_wr='1' AND rom_aw(0)='0' THEN
+--        ECSROM_H(to_integer(rom_aw(14 DOWNTO 1)))<=rom_dw;
+--      END IF;
+--      IF rom_ecs_wr='1' AND rom_aw(0)='1' THEN
+--        ECSROM_L(to_integer(rom_aw(14 DOWNTO 1)))<=rom_dw;
+--      END IF;
     END IF;
   END PROCESS ROM_WR;
   
