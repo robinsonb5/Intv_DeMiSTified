@@ -66,14 +66,15 @@ tns:
 .PHONY: mist
 mist:
 	@echo -n "Compiling $(PROJECT) for MiST... "
-	@$(QUARTUS_MIST)/quartus_sh >mist/compile.log --flow compile mist/$(PROJECT)_MiST.qpf \
+	@$(QUARTUS_MIST)/quartus_sh >mist/compile.log --flow compile mist/$(PROJECT)_mist.qpf \
 		&& echo "\033[32mSuccess\033[0m" || grep Error mist/compile.log
 	@grep -r Design-wide\ TNS mist/output_files/*.rpt
 
-.PHONY: mister
-mister:
-	@echo -n "Compiling $(PROJECT) for MiSTer... "
-	@$(QUARTUS_MISTER)/quartus_sh >MiSTer/compile.log --flow compile MiSTer/$(PROJECT)_MiSTer.qpf \
-		&& echo "\033[32mSuccess\033[0m" || grep Error MiSTer/compile.log
-	@grep -r Design-wide\ TNS MiSTer/output_files/*.rpt
+# FIXME - the MiSTer target will need some TLC to make it work again after the invasive changes needed for MiST and Friends.
+#.PHONY: mister
+#mister:
+#	@echo -n "Compiling $(PROJECT) for MiSTer... "
+#	@$(QUARTUS_MISTER)/quartus_sh >MiSTer/compile.log --flow compile MiSTer/$(PROJECT)_MiSTer.qpf \
+#		&& echo "\033[32mSuccess\033[0m" || grep Error MiSTer/compile.log
+#	@grep -r Design-wide\ TNS MiSTer/output_files/*.rpt
 

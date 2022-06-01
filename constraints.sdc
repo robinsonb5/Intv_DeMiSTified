@@ -1,11 +1,12 @@
-set sdram_clk "${topmodule}pll|altpll_component|auto_generated|pll1|clk[1]"
-set mem_clk   "${topmodule}pll|altpll_component|auto_generated|pll1|clk[0]"
-set sys_clk   "${topmodule}pll|altpll_component|auto_generated|pll1|clk[0]"
+set sdram_clk "${topmodule}clocks|pll|altpll_component|auto_generated|pll1|clk[1]"
+set mem_clk   "${topmodule}clocks|pll|altpll_component|auto_generated|pll1|clk[0]"
+set sys_clk   "${topmodule}clocks|pll|altpll_component|auto_generated|pll1|clk[0]"
 
 # Automatically calculate clock uncertainty to jitter and other effects.
 derive_clock_uncertainty
 
 set_clock_groups -asynchronous -group [get_clocks $hostclk] -group [get_clocks $sys_clk]
+set_clock_groups -asynchronous -group [get_clocks $supportclk] -group [get_clocks $sys_clk]
 set_clock_groups -asynchronous -group [get_clocks spiclk] -group [get_clocks $sys_clk]
 
 # SDRAM delays

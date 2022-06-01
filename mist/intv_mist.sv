@@ -43,6 +43,12 @@ module intv_mist
    input         CONF_DATA0,
 
    output [12:0] SDRAM_A,
+`ifdef DEMISTIFY
+	input  [11:0] keypad,
+   input  [15:0] SDRAM_DQ_IN,
+   output [15:0] SDRAM_DQ_OUT,
+   output        SDRAM_DRIVE_DQ,
+`endif
    inout  [15:0] SDRAM_DQ,
    output        SDRAM_DQML,
    output        SDRAM_DQMH,
@@ -174,6 +180,16 @@ wire rom_stb;
 wire [15:0] rom_addr;
 wire [15:0] rom_dout;
 
+`ifdef DEMISTIFY
+reg [11:0] keypad_d2,keypad_d;
+always @(posedge clk_sys) begin
+	keypad_d2 <= keypad;
+	keypad_d <= keypad_d2;
+end
+`else
+wire [11:0]	keypad_d = 12'b0;
+`endif
+
 intv_core intv_core
 (
     .clksys(clk_sys),
@@ -197,8 +213,9 @@ intv_core intv_core
     .vga_hb(CORE_HBLANK),
     .joystick_0(js0),
     .joystick_1(js1),
-    .joystick_analog_0(ja0),
-    .joystick_analog_1(ja1),
+    .joystick_analog_0({ja0[7:0],ja0[15:8]}),
+    .joystick_analog_1({ja1[7:0],ja1[15:8]}),
+	 .keypad(keypad_d),
     .ioctl_download(ioctl_download),
     .ioctl_index(ioctl_index),
     .ioctl_wr(ioctl_wr),
@@ -219,8 +236,15 @@ intv_core intv_core
 wire sdram_drive_dq;
 wire [15:0] sdram_dq_in,sdram_dq_out;
 
+`ifdef YOSYS
+assign SDRAM_DQ_OUT = sdram_dq_out;
+assign sdram_dq_in = SDRAM_DQ_IN;
+assign SDRAM_DRIVE_DQ = sdram_drive_dq;
+`else
+
 assign SDRAM_DQ = sdram_drive_dq ? sdram_dq_out : {16{1'bz}};
 assign sdram_dq_in = SDRAM_DQ;
+`endif
 
 always @(posedge clk_sys) begin
 	if ((rom_stb && !ioctl_download) || (rom_download && ioctl_wr))
@@ -265,19 +289,13 @@ sdram_amr #(.SDRAM_tCK(23800)) sdram (
 	.cart_we (cart_download),
 );
 
-
-dac #(.C_bits(16)) ldac (
-	.clk_i(clk_sys),
-	.res_n_i(pll_locked),
-	.dac_i(laud),
-	.dac_o(AUDIO_L)
-);
-
-dac #(.C_bits(16)) rdac (
-	.clk_i(clk_sys),
-	.res_n_i(pll_locked),
-	.dac_i(raud),
-	.dac_o(AUDIO_R)
+dacwrap dac (
+	.clk(clk_sys),
+	.reset_n(pll_locked),
+	.d_l(laud),
+	.d_r(raud),
+	.q_l(AUDIO_L),
+	.q_r(AUDIO_R)
 );
 
 
@@ -321,99 +339,12 @@ mist_video #(.COLOR_DEPTH(6), .OSD_COLOR(3'd5), .SD_HCNT_WIDTH(10), .OSD_AUTO_CE
 	.VGA_HS      ( VGA_HS     )
 );
 
-
-pll pll (
-	.inclk0(CLOCK_27),
-	.c0(clk_sys),
-	.c1(SDRAM_CLK),
+clocks clocks (
+	.clk_i(CLOCK_27),
+	.pal(pal),
+	.clk_sys(clk_sys),
+	.clk_sdram(SDRAM_CLK),
 	.locked(pll_locked)
 );
-
-//pll pll
-//(
-//    .refclk(CLK_50M),
-//    .reconfig_to_pll(reconfig_to_pll),
-//    .reconfig_from_pll(reconfig_from_pll),
-//    .locked(pll_locked),
-//    .outclk_0(clk_sys)
-//);
-//
-//wire [63:0] reconfig_to_pll;
-//wire [63:0] reconfig_from_pll;
-//wire        cfg_waitrequest;
-//reg         cfg_write;
-//reg   [5:0] cfg_address;
-//reg   [31:0] cfg_data;
-//
-//pll_cfg pll_cfg
-//(
-//    .mgmt_clk(CLK_50M),
-//    .mgmt_reset(0),
-//    .mgmt_waitrequest(cfg_waitrequest),
-//    .mgmt_read(0),
-//    .mgmt_readdata(),
-//    .mgmt_write(cfg_write),
-//    .mgmt_address(cfg_address),
-//    .mgmt_writedata(cfg_data),
-//    .reconfig_to_pll(reconfig_to_pll),
-//    .reconfig_from_pll(reconfig_from_pll)
-//);
-//
-//
-//// NTSC : 3.579545MHz *  12 =  42.95454MHz
-//// PAL  : 4MHz        *  12 =  48MHz
-//  
-//// STIC : CLK * 12
-//// IVOICE : CLK
-//  
-//reg tv_reset = 0;
-//always @(posedge CLK_50M) begin
-//    reg pald = 0, pald2 = 0;
-//    reg [2:0] state = 0;
-//
-//    pald  <= pal;
-//    pald2 <= pald;
-//
-//    cfg_write <= 0;
-//    if(pald2 != pald) state <= 1;
-//
-//    if(!cfg_waitrequest) begin
-//        if(state) state<=state+1'd1;
-//        case(state)
-//               0: tv_reset <= 0;
-//               1: begin
-//                         tv_reset <= 1;
-//                         cfg_address <= 0; // Waitrequest mode
-//                         cfg_data <= 0;
-//                         cfg_write <= 1;
-//                    end
-//               2: begin
-//                         cfg_address <= 3; // N counter
-//                         cfg_data <= 32'h00010000;
-//                         cfg_write <= 1;
-//                    end
-//               3: begin
-//                         cfg_address <= 4; // M counter
-//                         cfg_data <= 32'h00000404;
-//                         cfg_write <= 1;
-//                    end
-//               4: begin
-//                         cfg_address <= 5; // C0 counter
-//                         cfg_data <= pald2 ? 32'h00020504 : 32'h00000505;
-//                         cfg_write <= 1;
-//                    end
-//               5: begin
-//                         cfg_address <= 7; // M frac
-//                         cfg_data <= pald2 ? 32'hA3D709E8 : 32'h9745BF27;
-//                         cfg_write <= 1;
-//                    end
-//               6: begin
-//                         cfg_address <= 2; // Start reconf
-//                         cfg_data <= 0;
-//                         cfg_write <= 1;
-//                    end
-//          endcase
-//     end
-//end
 
 endmodule

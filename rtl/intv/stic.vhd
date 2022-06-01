@@ -140,13 +140,13 @@ ARCHITECTURE rtl OF stic IS
   
   ------------------------------------------------
   -- Character Memory address for object
-  FUNCTION objadrs(vpos  : uint9;
+  FUNCTION objadrs(vposi  : uint9;
                    delay_v : uv3;
                    ry,ra : uv14) RETURN uint11 IS
     VARIABLE v  : uint4;
     VARIABLE vu : integer RANGE -16384 TO 16383;
   BEGIN
-    vu:=vpos - VSTART - 2*to_integer(delay_v) - 2*to_integer(ry(6 DOWNTO 0));
+    vu:=vposi - VSTART - 2*to_integer(delay_v) - 2*to_integer(ry(6 DOWNTO 0));
     CASE ry(9 DOWNTO 7) IS -- Ysiz4 / Ysiz2 / Yres
       WHEN "000"  => v:=(vu + 16384) MOD 8;      -- MOB 8x8 -> 8 lines
       WHEN "001"  => v:=(vu + 16384) MOD 16;     -- MOB 8x16-> 16 lines
@@ -164,7 +164,7 @@ ARCHITECTURE rtl OF stic IS
   END FUNCTION objadrs;
   
   -- Generate object pixel from GRAM/GROM character memory
-  FUNCTION objpix(hpos      : uint9;
+  FUNCTION objpix(hposi      : uint9;
                   delay_h   : uv3;
                   gram,grom : uv8;   -- Read memory GRAM/GROM
                   rx,ry,ra  : uv14; -- MOB Registers
@@ -176,7 +176,7 @@ ARCHITECTURE rtl OF stic IS
     -- Selection GRAM / GROM
     IF ra(11)='0' THEN m:=grom; ELSE m:=gram; END IF;
     
-    ch:=((hpos - HSTART - to_integer(delay_h) - to_integer(rx(7 DOWNTO 0)))
+    ch:=((hposi - HSTART - to_integer(delay_h) - to_integer(rx(7 DOWNTO 0)))
          +1024) MOD 1024;
     
     IF rx(10)='0' THEN
@@ -189,15 +189,15 @@ ARCHITECTURE rtl OF stic IS
     RETURN (col=>ra(12) & ra(2 DOWNTO 0),a=>m(ch));
   END FUNCTION;
 
-  FUNCTION objhit(hpos    : uint9;
-                  vpos    : uint9;
+  FUNCTION objhit(hposi    : uint9;
+                  vposi    : uint9;
                   delay_h : uv3;
                   delay_v : uv3;
                   rx,ry   : uv14) RETURN boolean IS
     VARIABLE h,v : boolean;
     VARIABLE ch,cv : integer RANGE -1024 TO 1023;
   BEGIN
-    ch:=hpos - HSTART - to_integer(delay_h) - to_integer(rx(7 DOWNTO 0));
+    ch:=hposi - HSTART - to_integer(delay_h) - to_integer(rx(7 DOWNTO 0));
     IF rx(10)='0' THEN
       h:=(ch>=0 AND ch<8);
     ELSE
@@ -205,7 +205,7 @@ ARCHITECTURE rtl OF stic IS
     END IF;
     IF rx(7 DOWNTO 0)=x"00" THEN h:=false; END IF;
     
-    cv:=vpos - VSTART - 2*to_integer(delay_v) - 2*to_integer(ry(6 DOWNTO 0));
+    cv:=vposi - VSTART - 2*to_integer(delay_v) - 2*to_integer(ry(6 DOWNTO 0));
     CASE ry(9 DOWNTO 7) IS -- Ysiz4 / Ysiz2 / Yres
       WHEN "000"  => v:=(cv>=0 AND cv<8);
       WHEN "001"  => v:=(cv>=0 AND cv<16);
@@ -221,16 +221,16 @@ ARCHITECTURE rtl OF stic IS
   
   ------------------------------------------------
   -- Background access in SYSRAM
-  FUNCTION cartadrs(hpos,vpos : uint9;
+  FUNCTION cartadrs(hposi,vposi : uint9;
                     delay_h,delay_v : uv3) RETURN uint12 IS
     VARIABLE i : integer RANGE -511 TO 512;
   BEGIN
-    i:=((hpos - 8 - HSTART  - to_integer(delay_h))/8 +
-      20 * (((vpos - VSTART)/2 - 8 - to_integer(delay_v))/8) + 512) MOD 512;
+    i:=((hposi - 8 - HSTART  - to_integer(delay_h))/8 +
+      20 * (((vposi - VSTART)/2 - 8 - to_integer(delay_v))/8) + 512) MOD 512;
      RETURN i;
   END FUNCTION;
   
-  FUNCTION bgadrs(vpos : uint9;
+  FUNCTION bgadrs(vposi : uint9;
                   delay_v : uv3;
                   csmode : std_logic;
                   rd : uv16) RETURN uint11 IS
@@ -238,42 +238,42 @@ ARCHITECTURE rtl OF stic IS
     IF csmode='1' THEN
       -- 2*256 cards in FG/BG mode
       RETURN to_integer(rd(10 DOWNTO 3))*8 +
-        (((vpos - VSTART)/2 - to_integer(delay_v)+32) MOD 8);
+        (((vposi - VSTART)/2 - to_integer(delay_v)+32) MOD 8);
     ELSE
       -- 2*64 cards in FG/BG mode
       RETURN to_integer(rd(8 DOWNTO 3))*8 +
-        (((vpos - VSTART)/2 - to_integer(delay_v)+32) MOD 8);
+        (((vposi - VSTART)/2 - to_integer(delay_v)+32) MOD 8);
     END IF;
   END FUNCTION;
   
   -- Generate background pixel from SYSRAM memory
   FUNCTION bgpix (
-    hpos,vpos  : uint9;
+    hposi,vposi  : uint9;
     delay_h,delay_v : uv3;
     csmode  : std_logic; -- 1=Color Stack Mode, 0=FGBG mode
     gram,grom : uv8;
     cstack : uv4;
-    dr : uv16) RETURN type_col IS
+    dri : uv16) RETURN type_col IS
     VARIABLE col : uv4;
     VARIABLE v : type_col;
     VARIABLE m : uv8;
     VARIABLE ch,cv : integer RANGE -1024 TO 1023;
   BEGIN
-    IF dr(11)='0' THEN m:=grom; ELSE m:=gram; END IF;
+    IF dri(11)='0' THEN m:=grom; ELSE m:=gram; END IF;
     
-    ch:=(hpos - HSTART - 8 - to_integer(delay_h) + 32) MOD 8;
-    cv:=((vpos - VSTART)/2 - 8 - to_integer(delay_v) + 32) MOD 8;
+    ch:=(hposi - HSTART - 8 - to_integer(delay_h) + 32) MOD 8;
+    cv:=((vposi - VSTART)/2 - 8 - to_integer(delay_v) + 32) MOD 8;
     
-    IF dr(12 DOWNTO 11)="10" AND csmode='1' THEN
+    IF dri(12 DOWNTO 11)="10" AND csmode='1' THEN
       -- Coloured Squares Mode
       IF ch<4 AND cv<4 THEN
-        col:='0' & dr(2 DOWNTO 0);
+        col:='0' & dri(2 DOWNTO 0);
       ELSIF ch>3 AND cv<4 THEN
-        col:='0' & dr(5 DOWNTO 3);
+        col:='0' & dri(5 DOWNTO 3);
       ELSIF ch<4 AND cv>3 THEN
-        col:='0' & dr(8 DOWNTO 6);
+        col:='0' & dri(8 DOWNTO 6);
       ELSE
-        col:='0' & dr(13) & dr(10 DOWNTO 9);
+        col:='0' & dri(13) & dri(10 DOWNTO 9);
       END IF;
       IF col="111" THEN
         v:=(col=>cstack,a=>'0');
@@ -285,13 +285,13 @@ ARCHITECTURE rtl OF stic IS
         -- Color Stack Mode
         col:=cstack;
         IF m(7-ch)='1' THEN
-          col:=dr(12) & dr(2 DOWNTO 0);
+          col:=dri(12) & dri(2 DOWNTO 0);
         END IF;
       ELSE
         -- FGBG Mode
-        col:=dr(12) & dr(13) & dr(10) & dr(9);
+        col:=dri(12) & dri(13) & dri(10) & dri(9);
         IF m(7-ch)='1' THEN
-          col:='0' & dr(2 DOWNTO 0);
+          col:='0' & dri(2 DOWNTO 0);
         END IF;
       END IF;
       v:=(col=>col,a=>m(7-ch));
@@ -299,20 +299,20 @@ ARCHITECTURE rtl OF stic IS
     RETURN v;
   END FUNCTION;
   
-  FUNCTION visible(hpos : uint9;
-                   vpos : uint9;
+  FUNCTION visible(hposi : uint9;
+                   vposi : uint9;
                    bext_l,bext_t : std_logic) RETURN boolean IS
     VARIABLE h,v : boolean;
   BEGIN
     IF bext_l='0' THEN
-      h:=(hpos >= 8 + HSTART AND hpos <  7 + HSTART + 8*20);
+      h:=(hposi >= 8 + HSTART AND hposi <  7 + HSTART + 8*20);
     ELSE
-      h:=(hpos >= 16 + HSTART AND hpos <  7 + HSTART + 8*20);
+      h:=(hposi >= 16 + HSTART AND hposi <  7 + HSTART + 8*20);
     END IF;
     IF bext_t='0' THEN
-      v:=(vpos >= 16 + VSTART AND vpos < 15 + VSTART + 16*12);
+      v:=(vposi >= 16 + VSTART AND vposi < 15 + VSTART + 16*12);
     ELSE
-      v:=(vpos >= 32 + VSTART AND vpos < 15 + VSTART + 16*12);
+      v:=(vposi >= 32 + VSTART AND vposi < 15 + VSTART + 16*12);
     END IF;
     RETURN h AND v;
   END FUNCTION;
@@ -322,20 +322,20 @@ ARCHITECTURE rtl OF stic IS
 
  --    -- This 1 pixel border is 1 double-res pixel tall on top and bottom. 
  --       It's the same border as is used for border-collision detect.
-  FUNCTION coll_mob(hpos : uint9;
-                    vpos : uint9;
+  FUNCTION coll_mob(hposi : uint9;
+                    vposi : uint9;
                     bext_l,bext_t : std_logic) RETURN boolean IS
     VARIABLE h,v : boolean;
   BEGIN
     IF bext_l='0' THEN
-      h:=(hpos >=  8 + HSTART-1 AND hpos < 8 + HSTART + 8*20);
+      h:=(hposi >=  8 + HSTART-1 AND hposi < 8 + HSTART + 8*20);
     ELSE
-      h:=(hpos >= 16 + HSTART-1 AND hpos < 8 + HSTART + 8*20);
+      h:=(hposi >= 16 + HSTART-1 AND hposi < 8 + HSTART + 8*20);
     END IF;
     IF bext_t='0' THEN
-      v:=(vpos >= 16 + VSTART-1 AND vpos < 16 + VSTART + 16*12 +1);
+      v:=(vposi >= 16 + VSTART-1 AND vposi < 16 + VSTART + 16*12 +1);
     ELSE
-      v:=(vpos >= 32 + VSTART-1 AND vpos < 16 + VSTART + 16*12 +1);
+      v:=(vposi >= 32 + VSTART-1 AND vposi < 16 + VSTART + 16*12 +1);
     END IF;
     RETURN h AND v;
   END FUNCTION;
@@ -347,19 +347,19 @@ ARCHITECTURE rtl OF stic IS
 
  --    -- Horizontal and vertical delay are taken into account as with
  --       everything else.
-  FUNCTION coll_bg(hpos,vpos : uint9;
+  FUNCTION coll_bg(hposi,vposi : uint9;
                    bext_l,bext_t : std_logic) RETURN boolean IS
     VARIABLE h,v : boolean;
   BEGIN
     IF bext_l='0' THEN
-      h:=(hpos >   8 + HSTART AND hpos < 7 + HSTART + 8*20+1);
+      h:=(hposi >   8 + HSTART AND hposi < 7 + HSTART + 8*20+1);
     ELSE
-      h:=(hpos >  16 + HSTART AND hpos < 7 + HSTART + 8*20+1);
+      h:=(hposi >  16 + HSTART AND hposi < 7 + HSTART + 8*20+1);
     END IF;
     IF bext_t='0' THEN
-      v:=(vpos >  16 + VSTART AND vpos < 15 + VSTART + 16*12-1);
+      v:=(vposi >  16 + VSTART AND vposi < 15 + VSTART + 16*12-1);
     ELSE
-      v:=(vpos >  32 + VSTART AND vpos < 15 + VSTART + 16*12-1);
+      v:=(vposi >  32 + VSTART AND vposi < 15 + VSTART + 16*12-1);
     END IF;
     RETURN h AND v;
   END FUNCTION;
@@ -373,26 +373,26 @@ ARCHITECTURE rtl OF stic IS
 
  --     -- MOBs w/ X==0 never interact with anything, including the borders.
   
-  FUNCTION coll_border(hpos : uint9;
-                       vpos : uint9;
+  FUNCTION coll_border(hposi : uint9;
+                       vposi : uint9;
                        bext_l,bext_t : std_logic) RETURN boolean IS
     VARIABLE h,v : boolean;
   BEGIN
     
     IF bext_l='0' THEN
-      h:=(hpos =  8 + HSTART - 1 OR  hpos =  7 + HSTART + 8*20);
-      v:=(hpos >= 8 + HSTART - 1 AND hpos <  8 + HSTART + 8*20);
+      h:=(hposi =  8 + HSTART - 1 OR  hposi =  7 + HSTART + 8*20);
+      v:=(hposi >= 8 + HSTART - 1 AND hposi <  8 + HSTART + 8*20);
     ELSE
-      h:=(hpos = 16 + HSTART - 1 OR  hpos =  7 + HSTART + 8*20);
-      v:=(hpos >=16 + HSTART - 1 AND hpos <  8 + HSTART + 8*20);
+      h:=(hposi = 16 + HSTART - 1 OR  hposi =  7 + HSTART + 8*20);
+      v:=(hposi >=16 + HSTART - 1 AND hposi <  8 + HSTART + 8*20);
     END IF;
     
     IF bext_t='0' THEN
-      h:=h AND (vpos>= 16 + VSTART - 1 AND vpos < 16 + VSTART + 16*12 + 1);
-      v:=v AND (vpos = 16 + VSTART - 1 OR  vpos = 15 + VSTART + 16*12 + 1);
+      h:=h AND (vposi>= 16 + VSTART - 1 AND vposi < 16 + VSTART + 16*12 + 1);
+      v:=v AND (vposi = 16 + VSTART - 1 OR  vposi = 15 + VSTART + 16*12 + 1);
     ELSE
-      h:=h AND (vpos>= 32 + VSTART - 1 AND vpos < 16 + VSTART + 16*12 + 1);
-      v:=v AND (vpos = 32 + VSTART - 1 OR  vpos = 15 + VSTART + 16*12 + 1);
+      h:=h AND (vposi>= 32 + VSTART - 1 AND vposi < 16 + VSTART + 16*12 + 1);
+      v:=v AND (vposi = 32 + VSTART - 1 OR  vposi = 15 + VSTART + 16*12 + 1);
     END IF;
     RETURN h OR v;
   END FUNCTION;

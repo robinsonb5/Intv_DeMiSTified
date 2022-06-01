@@ -50,6 +50,7 @@ ENTITY intv_core IS
     ioctl_dout        : IN  std_logic_vector(7 DOWNTO 0);
     ioctl_wait        : OUT std_logic;
     ps2_key           : IN  std_logic_vector(10 DOWNTO 0);
+	 keypad            : in std_logic_vector(11 downto 0);
     
 	 -- External RAM:
 	 cart_addr         : out unsigned(15 downto 0);
@@ -87,6 +88,11 @@ ARCHITECTURE struct OF intv_core IS
   
   SIGNAL ps2_key_delay,ps2_key_mem : std_logic_vector(10 DOWNTO 0);
   
+  -- Numeric keypad
+  SIGNAL key_k0,key_k1,key_k2,key_k3,key_k4,key_k5,key_k6,key_k7 : std_logic;
+  SIGNAL key_k8,key_k9,key_kperiod,key_kenter : std_logic;
+
+  -- Keyboard
   SIGNAL key_0,key_1,key_2,key_3,key_4,key_5,key_6,key_7 : std_logic;
   SIGNAL key_8,key_9,key_a,key_b,key_c,key_d,key_e,key_f : std_logic;
   SIGNAL key_g,key_h,key_i,key_j,key_k,key_l,key_m,key_n : std_logic;
@@ -519,12 +525,12 @@ BEGIN
   ivoice_divi<=358 WHEN pal='0' ELSE 400;
   
   audio_l<=std_logic_vector(
-    ('0' & signed(sound + mux(ecs,sound2,x"000")) & "000") +
-    (signed(mux(ivoice,unsigned(sound_iv(15 DOWNTO 8)),x"00")) & "000"));
+    ('1' & signed(sound + mux(ecs,sound2,x"000")) & "000") +
+    (signed(mux(ivoice,unsigned(sound_iv(15 DOWNTO 8)),x"00")) & "0000"));
   
   audio_r<=std_logic_vector(
-    ('0' & signed(sound + mux(ecs,sound2,x"000")) & "000") +
-    (signed(mux(ivoice,unsigned(sound_iv(15 DOWNTO 8)),x"00")) & "000"));
+    ('1' & signed(sound + mux(ecs,sound2,x"000")) & "000") +
+    (signed(mux(ivoice,unsigned(sound_iv(15 DOWNTO 8)),x"00")) & "0000"));
   
   Seq:PROCESS(clksys) IS
   BEGIN
@@ -574,18 +580,18 @@ BEGIN
   CRCCalc:PROCESS(clksys) IS
     FUNCTION crc8 (
       CONSTANT d   : IN unsigned(7 DOWNTO 0);
-      CONSTANT crc : IN unsigned(31 DOWNTO 0)) RETURN unsigned IS
+      CONSTANT crci : IN unsigned(31 DOWNTO 0)) RETURN unsigned IS
       VARIABLE co : unsigned(31 DOWNTO 0);
       VARIABLE h  : unsigned(7 DOWNTO 0);
     BEGIN
-      h(0):=d(0) XOR crc(31);
-      h(1):=d(1) XOR crc(30);
-      h(2):=d(2) XOR crc(29);
-      h(3):=d(3) XOR crc(28);
-      h(4):=d(4) XOR crc(27);
-      h(5):=d(5) XOR crc(26);
-      h(6):=d(6) XOR crc(25) XOR h(0);
-      h(7):=d(7) XOR crc(24) XOR h(1);
+      h(0):=d(0) XOR crci(31);
+      h(1):=d(1) XOR crci(30);
+      h(2):=d(2) XOR crci(29);
+      h(3):=d(3) XOR crci(28);
+      h(4):=d(4) XOR crci(27);
+      h(5):=d(5) XOR crci(26);
+      h(6):=d(6) XOR crci(25) XOR h(0);
+      h(7):=d(7) XOR crci(24) XOR h(1);
       co(0) :=h(7);
       co(1) :=h(6) XOR h(7);
       co(2) :=h(5) XOR h(6) XOR h(7);
@@ -594,30 +600,30 @@ BEGIN
       co(5) :=h(2) XOR h(3) XOR h(4) XOR h(6) XOR h(7);
       co(6) :=h(1) XOR h(2) XOR h(3) XOR h(5) XOR h(6);
       co(7) :=h(0) XOR h(1) XOR h(2) XOR h(4) XOR h(5) XOR h(7);
-      co(8) := crc(0) XOR h(0) XOR h(1) XOR h(3) XOR h(4) XOR h(6) XOR h(7);
-      co(9) := crc(1) XOR h(0) XOR h(2) XOR h(3) XOR h(5) XOR h(6);
-      co(10):= crc(2) XOR h(1) XOR h(2) XOR h(4) XOR h(5) XOR h(7);
-      co(11):= crc(3) XOR h(0) XOR h(1) XOR h(3) XOR h(4) XOR h(6) XOR h(7);
-      co(12):= crc(4) XOR h(0) XOR h(2) XOR h(3) XOR h(5) XOR h(6) XOR h(7);
-      co(13):= crc(5) XOR h(1) XOR h(2) XOR h(4) XOR h(5) XOR h(6);
-      co(14):= crc(6) XOR h(0) XOR h(1) XOR h(3) XOR h(4) XOR h(5);
-      co(15):= crc(7) XOR h(0) XOR h(2) XOR h(3) XOR h(4);
-      co(16):= crc(8) XOR h(1) XOR h(2) XOR h(3) XOR h(7);
-      co(17):= crc(9) XOR h(0) XOR h(1) XOR h(2) XOR h(6);
-      co(18):=crc(10) XOR h(0) XOR h(1) XOR h(5);
-      co(19):=crc(11) XOR h(0) XOR h(4);
-      co(20):=crc(12) XOR h(3);
-      co(21):=crc(13) XOR h(2);
-      co(22):=crc(14) XOR h(1) XOR h(7);
-      co(23):=crc(15) XOR h(0) XOR h(6) XOR h(7);
-      co(24):=crc(16) XOR h(5) XOR h(6);
-      co(25):=crc(17) XOR h(4) XOR h(5);
-      co(26):=crc(18) XOR h(3) XOR h(4) XOR h(7);
-      co(27):=crc(19) XOR h(2) XOR h(3) XOR h(6);
-      co(28):=crc(20) XOR h(1) XOR h(2) XOR h(5);
-      co(29):=crc(21) XOR h(0) XOR h(1) XOR h(4);
-      co(30):=crc(22) XOR h(0) XOR h(3);
-      co(31):=crc(23) XOR h(2);
+      co(8) := crci(0) XOR h(0) XOR h(1) XOR h(3) XOR h(4) XOR h(6) XOR h(7);
+      co(9) := crci(1) XOR h(0) XOR h(2) XOR h(3) XOR h(5) XOR h(6);
+      co(10):= crci(2) XOR h(1) XOR h(2) XOR h(4) XOR h(5) XOR h(7);
+      co(11):= crci(3) XOR h(0) XOR h(1) XOR h(3) XOR h(4) XOR h(6) XOR h(7);
+      co(12):= crci(4) XOR h(0) XOR h(2) XOR h(3) XOR h(5) XOR h(6) XOR h(7);
+      co(13):= crci(5) XOR h(1) XOR h(2) XOR h(4) XOR h(5) XOR h(6);
+      co(14):= crci(6) XOR h(0) XOR h(1) XOR h(3) XOR h(4) XOR h(5);
+      co(15):= crci(7) XOR h(0) XOR h(2) XOR h(3) XOR h(4);
+      co(16):= crci(8) XOR h(1) XOR h(2) XOR h(3) XOR h(7);
+      co(17):= crci(9) XOR h(0) XOR h(1) XOR h(2) XOR h(6);
+      co(18):=crci(10) XOR h(0) XOR h(1) XOR h(5);
+      co(19):=crci(11) XOR h(0) XOR h(4);
+      co(20):=crci(12) XOR h(3);
+      co(21):=crci(13) XOR h(2);
+      co(22):=crci(14) XOR h(1) XOR h(7);
+      co(23):=crci(15) XOR h(0) XOR h(6) XOR h(7);
+      co(24):=crci(16) XOR h(5) XOR h(6);
+      co(25):=crci(17) XOR h(4) XOR h(5);
+      co(26):=crci(18) XOR h(3) XOR h(4) XOR h(7);
+      co(27):=crci(19) XOR h(2) XOR h(3) XOR h(6);
+      co(28):=crci(20) XOR h(1) XOR h(2) XOR h(5);
+      co(29):=crci(21) XOR h(0) XOR h(1) XOR h(4);
+      co(30):=crci(22) XOR h(0) XOR h(3);
+      co(31):=crci(23) XOR h(2);
       RETURN co;
     END crc8;
   BEGIN
@@ -922,17 +928,17 @@ BEGIN
       IF icart_map_dwr='1' THEN
         icart_map(idx)<=icart_map_ddw;
       END IF;
-    END IF;
-  END PROCESS icarmap;
+--    END IF;
+--  END PROCESS icarmap;
   
-  icarmap2:PROCESS(clksys) IS
-  BEGIN
-    IF rising_edge(clksys) THEN
+--  icarmap2:PROCESS(clksys) IS
+--  BEGIN
+--    IF rising_edge(clksys) THEN
       IF icart_pwr='1' THEN
         icart_map(cidx)<=icart_dw(7 DOWNTO 0);
       END IF;
     END IF;
-  END PROCESS icarmap2;
+  END PROCESS icarmap;
 
   cidx<=to_integer(ad(3 DOWNTO 0) & ad(4)) WHEN ioctl_download='0'
          ELSE icart_map_da;
@@ -1053,6 +1059,18 @@ BEGIN
       io_v:=io_v OR ("01000100" AND sext(key_8,8)); -- 8
       io_v:=io_v OR ("00100100" AND sext(key_9,8)); -- 9
     END IF;
+	io_v:=io_v OR ("10001000" AND sext(key_kperiod or keypad(11),8)); -- Clear
+	io_v:=io_v OR ("00101000" AND sext(key_kenter or keypad(10),8)); -- Enter 
+	io_v:=io_v OR ("01001000" AND sext(key_k0 or keypad(0),8)); -- 0
+	io_v:=io_v OR ("10000001" AND sext(key_k1 or keypad(1),8)); -- 1
+	io_v:=io_v OR ("01000001" AND sext(key_k2 or keypad(2),8)); -- 2
+	io_v:=io_v OR ("00100001" AND sext(key_k3 or keypad(3),8)); -- 3
+	io_v:=io_v OR ("10000010" AND sext(key_k4 or keypad(4),8)); -- 4
+	io_v:=io_v OR ("01000010" AND sext(key_k5 or keypad(5),8)); -- 5
+	io_v:=io_v OR ("00100010" AND sext(key_k6 or keypad(6),8)); -- 6
+	io_v:=io_v OR ("10000100" AND sext(key_k7 or keypad(7),8)); -- 7
+	io_v:=io_v OR ("01000100" AND sext(key_k8 or keypad(8),8)); -- 8
+	io_v:=io_v OR ("00100100" AND sext(key_k9 or keypad(9),8)); -- 9
     
     ---------------------------------
     -- PORT B
@@ -1102,35 +1120,35 @@ BEGIN
           key_space,key_colon,key_period,key_comma,
           key_up,key_down,key_right,key_left,
           key_enter,key_esc,key_lshift,key_rshift,key_lctrl,key_rctrl,pa2_o,pb2_o,pa2_en,pb2_en) IS
-    VARIABLE dr : uv8;
+    VARIABLE drv : uv8;
   BEGIN
     IF pa2_en='1' AND pb2_en='0' THEN
-      dr:=x"00";
-      dr:=dr OR mux(NOT pa2_o(7),
+      drv:=x"00";
+      drv:=drv OR mux(NOT pa2_o(7),
                     "00000000",x"00");
-      dr:=dr OR mux(NOT pa2_o(6),
+      drv:=drv OR mux(NOT pa2_o(6),
                     (key_rshift OR key_lshift) & "0000000",x"00");
-      dr:=dr OR mux(NOT pa2_o(5),
+      drv:=drv OR mux(NOT pa2_o(5),
                     key_a & (key_rctrl OR key_lctrl) & key_right & key_1 & key_q & key_up & key_down & key_space,x"00");
-      dr:=dr OR mux(NOT pa2_o(4),
+      drv:=drv OR mux(NOT pa2_o(4),
                     key_d & key_e & key_2 & key_3 & key_w & key_s & key_z & key_x,x"00");
-      dr:=dr OR mux(NOT pa2_o(3),
+      drv:=drv OR mux(NOT pa2_o(3),
                     key_g & key_t & key_4 & key_5 & key_r & key_f & key_c & key_v,x"00");
-      dr:=dr OR mux(NOT pa2_o(2),
+      drv:=drv OR mux(NOT pa2_o(2),
                     key_j & key_u & key_6 & key_7 & key_y  & key_h & key_b & key_n,x"00");
-      dr:=dr OR mux(NOT pa2_o(1),
+      drv:=drv OR mux(NOT pa2_o(1),
                     key_l & key_o & key_8 & key_9 & key_i & key_k & key_m & key_comma,x"00");
-      dr:=dr OR mux(NOT pa2_o(0),
+      drv:=drv OR mux(NOT pa2_o(0),
                     '0' & key_enter & key_0 & key_esc & key_p & key_colon & key_period & key_left,x"00");
-      dr:=NOT dr;
+      drv:=NOT drv;
     ELSIF pa2_en='0' AND pb2_en='1' THEN
-      dr:=x"FF";
+      drv:=x"FF";
       -- <TODO>
     ELSE
-      dr:=x"FF";
+      drv:=x"FF";
     END IF;
-    pb2_i<=dr;
-    pa2_i<=dr;
+    pb2_i<=drv;
+    pa2_i<=drv;
       
   END PROCESS;
   
@@ -1154,59 +1172,78 @@ BEGIN
       ps2_key_delay<=ps2_key;
       ps2_key_mem<=ps2_key;
       IF ps2_key_delay(10)/=ps2_key(10) THEN
-        CASE ps2_key(7 DOWNTO 0) IS
-          WHEN x"45" => key_0<=ps2_key(9);
-          WHEN x"16" => key_1<=ps2_key(9);
-          WHEN x"1E" => key_2<=ps2_key(9);
-          WHEN x"26" => key_3<=ps2_key(9);
-          WHEN x"25" => key_4<=ps2_key(9);
-          WHEN x"2E" => key_5<=ps2_key(9);
-          WHEN x"36" => key_6<=ps2_key(9);
-          WHEN x"3D" => key_7<=ps2_key(9);
-          WHEN x"3E" => key_8<=ps2_key(9);
-          WHEN x"46" => key_9<=ps2_key(9);
-          WHEN x"1C" => key_a<=ps2_key(9);
-          WHEN x"32" => key_b<=ps2_key(9);
-          WHEN x"21" => key_c<=ps2_key(9);
-          WHEN x"23" => key_d<=ps2_key(9);
-          WHEN x"24" => key_e<=ps2_key(9);
-          WHEN x"2B" => key_f<=ps2_key(9);
-          WHEN x"34" => key_g<=ps2_key(9);
-          WHEN x"33" => key_h<=ps2_key(9);
-          WHEN x"43" => key_i<=ps2_key(9);
-          WHEN x"3B" => key_j<=ps2_key(9);
-          WHEN x"42" => key_k<=ps2_key(9);
-          WHEN x"4B" => key_l<=ps2_key(9);
-          WHEN x"3A" => key_m<=ps2_key(9);
-          WHEN x"31" => key_n<=ps2_key(9);
-          WHEN x"44" => key_o<=ps2_key(9);
-          WHEN x"4D" => key_p<=ps2_key(9);
-          WHEN x"15" => key_q<=ps2_key(9);
-          WHEN x"2D" => key_r<=ps2_key(9);
-          WHEN x"1B" => key_s<=ps2_key(9);
-          WHEN x"2C" => key_t<=ps2_key(9);
-          WHEN x"3C" => key_u<=ps2_key(9);
-          WHEN x"2A" => key_v<=ps2_key(9);
-          WHEN x"1D" => key_w<=ps2_key(9);
-          WHEN x"22" => key_x<=ps2_key(9);
-          WHEN x"35" => key_y<=ps2_key(9);
-          WHEN x"1A" => key_z<=ps2_key(9);
-          WHEN x"29" => key_space <=ps2_key(9);
-          WHEN x"5A" => key_enter <=ps2_key(9);
-          WHEN x"27" => key_colon<=ps2_key(9);
-          WHEN x"49" => key_period<=ps2_key(9);
-          WHEN x"41" => key_comma <=ps2_key(9);
-          WHEN x"63" => key_up<=ps2_key(9);
-          WHEN x"60" => key_down<=ps2_key(9);
-          WHEN x"6A" => key_right<=ps2_key(9);
-          WHEN x"61" => key_left <=ps2_key(9);
-          WHEN x"08" => key_esc<=ps2_key(9);
-          WHEN x"12" => key_lshift<=ps2_key(9);
-          WHEN x"59" => key_rshift<=ps2_key(9);
-          WHEN x"11" => key_lctrl<=ps2_key(9);
-          WHEN x"58" => key_rctrl<=ps2_key(9);
-          WHEN OTHERS => NULL;
-        END CASE;
+        if ps2_key(8) = '1' then -- Extended keycodes
+          case ps2_key(7 downto 0) is
+			    when x"5a" => key_kenter<=ps2_key(9);
+				 WHEN x"75" => key_up<=ps2_key(9);
+				 WHEN x"72" => key_down<=ps2_key(9);
+				 WHEN x"74" => key_right<=ps2_key(9);
+				 WHEN x"6b" => key_left <=ps2_key(9);
+				 when others =>
+					null;
+			 end case;
+        else
+			  CASE ps2_key(7 DOWNTO 0) IS
+			    when x"70" => key_k0<=ps2_key(9);
+			    when x"69" => key_k1<=ps2_key(9);
+			    when x"72" => key_k2<=ps2_key(9);
+			    when x"7a" => key_k3<=ps2_key(9);
+			    when x"6b" => key_k4<=ps2_key(9);
+			    when x"73" => key_k5<=ps2_key(9);
+			    when x"74" => key_k6<=ps2_key(9);
+			    when x"6c" => key_k7<=ps2_key(9);
+			    when x"75" => key_k8<=ps2_key(9);
+			    when x"7d" => key_k9<=ps2_key(9);
+			    when x"71" => key_kperiod<=ps2_key(9);
+				 WHEN x"45" => key_0<=ps2_key(9);
+				 WHEN x"16" => key_1<=ps2_key(9);
+				 WHEN x"1E" => key_2<=ps2_key(9);
+				 WHEN x"26" => key_3<=ps2_key(9);
+				 WHEN x"25" => key_4<=ps2_key(9);
+				 WHEN x"2E" => key_5<=ps2_key(9);
+				 WHEN x"36" => key_6<=ps2_key(9);
+				 WHEN x"3D" => key_7<=ps2_key(9);
+				 WHEN x"3E" => key_8<=ps2_key(9);
+				 WHEN x"46" => key_9<=ps2_key(9);
+				 WHEN x"1C" => key_a<=ps2_key(9);
+				 WHEN x"32" => key_b<=ps2_key(9);
+				 WHEN x"21" => key_c<=ps2_key(9);
+				 WHEN x"23" => key_d<=ps2_key(9);
+				 WHEN x"24" => key_e<=ps2_key(9);
+				 WHEN x"2B" => key_f<=ps2_key(9);
+				 WHEN x"34" => key_g<=ps2_key(9);
+				 WHEN x"33" => key_h<=ps2_key(9);
+				 WHEN x"43" => key_i<=ps2_key(9);
+				 WHEN x"3B" => key_j<=ps2_key(9);
+				 WHEN x"42" => key_k<=ps2_key(9);
+				 WHEN x"4B" => key_l<=ps2_key(9);
+				 WHEN x"3A" => key_m<=ps2_key(9);
+				 WHEN x"31" => key_n<=ps2_key(9);
+				 WHEN x"44" => key_o<=ps2_key(9);
+				 WHEN x"4D" => key_p<=ps2_key(9);
+				 WHEN x"15" => key_q<=ps2_key(9);
+				 WHEN x"2D" => key_r<=ps2_key(9);
+				 WHEN x"1B" => key_s<=ps2_key(9);
+				 WHEN x"2C" => key_t<=ps2_key(9);
+				 WHEN x"3C" => key_u<=ps2_key(9);
+				 WHEN x"2A" => key_v<=ps2_key(9);
+				 WHEN x"1D" => key_w<=ps2_key(9);
+				 WHEN x"22" => key_x<=ps2_key(9);
+				 WHEN x"35" => key_y<=ps2_key(9);
+				 WHEN x"1A" => key_z<=ps2_key(9);
+				 WHEN x"29" => key_space <=ps2_key(9);
+				 WHEN x"5A" => key_enter <=ps2_key(9);
+				 WHEN x"27" => key_colon<=ps2_key(9);
+				 WHEN x"49" => key_period<=ps2_key(9);
+				 WHEN x"41" => key_comma <=ps2_key(9);
+				 WHEN x"08" => key_esc<=ps2_key(9);
+				 WHEN x"12" => key_lshift<=ps2_key(9);
+				 WHEN x"59" => key_rshift<=ps2_key(9);
+				 WHEN x"11" => key_lctrl<=ps2_key(9);
+				 WHEN x"58" => key_rctrl<=ps2_key(9);
+				 WHEN OTHERS => NULL;
+			  END CASE;
+			end if;
       END IF;
     END IF;
   END PROCESS KeyCodes;
