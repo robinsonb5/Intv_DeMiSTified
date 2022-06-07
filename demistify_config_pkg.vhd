@@ -67,6 +67,8 @@ constant demistify_serialdebug : std_logic := '0';
 			VGA_R		:	 OUT STD_LOGIC_VECTOR(5 DOWNTO 0);
 			VGA_G		:	 OUT STD_LOGIC_VECTOR(5 DOWNTO 0);
 			VGA_B		:	 OUT STD_LOGIC_VECTOR(5 DOWNTO 0);
+			VGA_CLK		:	 OUT std_logic;
+			VGA_WINDOW	:	 OUT std_logic;
 			AUDIO_L  : out std_logic;
 			AUDIO_R  : out std_logic
 		);

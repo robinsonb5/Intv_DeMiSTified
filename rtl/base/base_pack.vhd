@@ -279,8 +279,8 @@ PACKAGE BODY base_pack IS
     b : unsigned) RETURN unsigned IS
     VARIABLE x : unsigned(a'range) :=(OTHERS => 'X');
   BEGIN
-    ASSERT a'length=b'length
-      REPORT "mux(): Different lengths" SEVERITY failure;
+--    ASSERT a'length=b'length
+--      REPORT "mux(): Different lengths" SEVERITY failure;
     IF s='1' THEN
       RETURN a;
     ELSIF s='0' THEN
@@ -297,8 +297,8 @@ PACKAGE BODY base_pack IS
     a : unsigned;
     b : unsigned) RETURN unsigned IS
   BEGIN
-    ASSERT a'length=b'length
-      REPORT "mux(): Different lengths" SEVERITY failure;
+--    ASSERT a'length=b'length
+--      REPORT "mux(): Different lengths" SEVERITY failure;
     IF s THEN
       RETURN a;
     ELSE
@@ -616,7 +616,7 @@ PACKAGE BODY base_pack IS
          WHEN OTHERS =>
            v:=1000;
        END CASE;
-       ASSERT v<b REPORT "To_Natural : Chaîne invalide :" & s SEVERITY error;
+--       ASSERT v<b REPORT "To_Natural : Chaîne invalide :" & s SEVERITY error;
        r:=r*b+v;
      END LOOP;
     RETURN r;

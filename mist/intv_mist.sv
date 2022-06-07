@@ -26,6 +26,10 @@ module intv_mist
    output  [5:0] VGA_B,
    output        VGA_HS,
    output        VGA_VS,
+`ifdef DEMISTIFY_HDMI
+   output        VGA_CLK,
+   output        VGA_WINDOW,
+`endif
 
    output        LED,
 
@@ -79,12 +83,15 @@ module intv_mist
 localparam CONF_STR = {
     "INTV;;",
     "F,ROMINTBIN,Load Cartridge;",
-    "O58,MAP,Auto,0,1,2,3,4,5,6,7,8,9;",
-    "OMN,Format,Auto,Raw,Intellicart;",
-    "O9,ECS,Off,On;",
-    "OA,Voice,On,Off;",
-    "OCD,Scanlines,Off,25%,50%,75%;",
-    "OB,Video standard,NTSC,PAL;",
+    "P1OMN,Format,Auto,Raw,Intellicart;",
+    "P1,System;",
+    "P1O9,ECS,Off,On;",
+    "P1OA,Voice,On,Off;",
+    "P1O58,MAP,Auto,0,1,2,3,4,5,6,7,8,9;",
+    "P2,Video;",
+    "P2OB,Video standard,NTSC,PAL;",
+    "P2OCD,Scanlines,Off,25%,50%,75%;",
+    "P2OE,Composite blend,Off,On;",
     "O1,Swap Joystick,Off,On;",
     "T0,Reset;",
     "V,v",`BUILD_DATE
@@ -108,6 +115,9 @@ wire ps2_key_ext;
 wire [7:0] ps2_key;
 wire tv15khz;
 
+wire ypbpr;
+wire nocsync;
+
 // include user_io module for arm controller communication
 user_io #(.STRLEN($size(CONF_STR)>>3)) user_io (
 	.conf_str       ( CONF_STR       ),
@@ -120,8 +130,8 @@ user_io #(.STRLEN($size(CONF_STR)>>3)) user_io (
 	.SPI_MOSI       ( SPI_DI         ),
 
 	.scandoubler_disable ( tv15khz   ),
-	.ypbpr          ( ),
-	.no_csync       ( ),
+	.ypbpr          ( ypbpr ),
+	.no_csync       ( nocsync ),
 	.buttons        ( buttons        ),
 
 	.joystick_0     ( js0            ),
@@ -154,6 +164,7 @@ data_io data_io (
 
 
 wire [1:0] scanlines = status[13:12];
+wire blend = status[14];
 wire pal     = status[11];
 wire swap    = status[1];
 wire ecs     = status[9];
@@ -225,12 +236,12 @@ intv_core intv_core
     .ps2_key({ps2_key_stb,ps2_key_pressed,ps2_key_ext,ps2_key}),
     .audio_l(laud),
     .audio_r(raud),
-	 .cart_addr(cart_addr),
-	 .cart_stb(cart_stb),
-	 .cart_in(cart_dout),
-	 .rom_addr(rom_addr),
-	 .rom_stb(rom_stb),
-	 .rom_in(rom_dout)
+    .cart_addr(cart_addr),
+    .cart_stb(cart_stb),
+    .cart_in(cart_dout),
+    .rom_addr(rom_addr),
+    .rom_stb(rom_stb),
+    .rom_in(rom_dout)
 );
 
 wire sdram_drive_dq;
@@ -289,11 +300,14 @@ sdram_amr #(.SDRAM_tCK(23800)) sdram (
 	.cart_we (cart_download),
 );
 
+
+// DAC takes unsigned values; audio is 16-bit signed so invert the first bit.
+
 dacwrap dac (
 	.clk(clk_sys),
 	.reset_n(pll_locked),
-	.d_l(laud),
-	.d_r(raud),
+	.d_l({~laud[15],laud[14:0]}),
+	.d_r({~raud[15],raud[14:0]}),
 	.q_l(AUDIO_L),
 	.q_r(AUDIO_R)
 );
@@ -316,13 +330,13 @@ mist_video #(.COLOR_DEPTH(6), .OSD_COLOR(3'd5), .SD_HCNT_WIDTH(10), .OSD_AUTO_CE
 	// 0 = HVSync 31KHz, 1 = CSync 15KHz
 	.scandoubler_disable ( tv15khz ),
 	// disable csync without scandoubler
-	.no_csync    ( 1'b0 ),
+	.no_csync    ( nocsync ),
 	// YPbPr always uses composite sync
-	.ypbpr       ( 1'b0 ),
+	.ypbpr       ( ypbpr ),
 	// Rotate OSD [0] - rotate [1] - left or right
 	.rotate      ( 2'b00      ),
 	// composite-like blending
-	.blend       ( 1'b0       ),
+	.blend       ( blend      ),
 
 	// video in
 	.R           ( CORE_DE ? CORE_R[7:2] : 6'b0 ),
@@ -339,11 +353,18 @@ mist_video #(.COLOR_DEPTH(6), .OSD_COLOR(3'd5), .SD_HCNT_WIDTH(10), .OSD_AUTO_CE
 	.VGA_HS      ( VGA_HS     )
 );
 
+`ifdef DEMISTIFY_HDMI
+assign VGA_WINDOW = CORE_DE;
+`endif
+
 clocks clocks (
 	.clk_i(CLOCK_27),
 	.pal(pal),
 	.clk_sys(clk_sys),
 	.clk_sdram(SDRAM_CLK),
+`ifdef DEMISTIFY_HDMI
+	.clk_video(VGA_CLK),
+`endif
 	.locked(pll_locked)
 );
 

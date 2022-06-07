@@ -155,7 +155,7 @@ ARCHITECTURE struct OF intv_core IS
     m   : uint4;
   END RECORD;
   TYPE arr_jmap IS ARRAY (natural RANGE <>) OF type_jmap;
-  CONSTANT MAPS : arr_jmap := (
+  CONSTANT MAPS : arr_jmap(0 to 34) := (
     (x"4CC46A04",1),(x"D5F038B6",1),(x"A3ACD160",1),(x"4422868E",1),
     (x"C2063C08",1),(x"A12C27E1",1),
     (x"515E1D7E",2),(x"0BF464C6",2),(x"3289C8BA",2),(x"16BFB8EB",2),
@@ -525,11 +525,11 @@ BEGIN
   ivoice_divi<=358 WHEN pal='0' ELSE 400;
   
   audio_l<=std_logic_vector(
-    ('1' & signed(sound + mux(ecs,sound2,x"000")) & "000") +
+    ('0' & signed(sound + mux(ecs,sound2,x"000")) & "000") +
     (signed(mux(ivoice,unsigned(sound_iv(15 DOWNTO 8)),x"00")) & "0000"));
   
   audio_r<=std_logic_vector(
-    ('1' & signed(sound + mux(ecs,sound2,x"000")) & "000") +
+    ('0' & signed(sound + mux(ecs,sound2,x"000")) & "000") +
     (signed(mux(ivoice,unsigned(sound_iv(15 DOWNTO 8)),x"00")) & "0000"));
   
   Seq:PROCESS(clksys) IS

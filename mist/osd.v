@@ -44,7 +44,7 @@ localparam OSD_WIDTH_PADDED = OSD_WIDTH + (OSD_WIDTH >> 1);  // 25% padding left
 // this core supports only the display related OSD commands
 // of the minimig
 reg        osd_enable;
-(* ramstyle = "no_rw_check" *) reg  [7:0] osd_buffer[2047:0];  // the OSD buffer itself
+reg  [7:0] osd_buffer[2047:0];  // the OSD buffer itself
 
 // the OSD has its own SPI interface to the io controller
 
@@ -52,6 +52,22 @@ reg        osd_enable;
 	reg [10:0] bcnt;
 	reg  [7:0] sbuf;
 	reg  [7:0] cmd;
+
+reg [7:0] osd_byte;
+reg osd_we;
+reg [10:0] osd_waddr;
+reg [7:0] osd_d;
+
+always @(posedge SPI_SCK) begin
+	if(osd_we) begin
+		osd_buffer[osd_waddr]<=osd_d;
+	end
+end
+
+
+always @(posedge clk_sys) begin
+	osd_byte <= osd_buffer[osd_buffer_addr];
+end
 
 always@(posedge SPI_SCK, posedge SPI_SS3) begin
 
@@ -75,9 +91,13 @@ always@(posedge SPI_SCK, posedge SPI_SS3) begin
 			if(sbuf[6:3] == 4'b0100) osd_enable <= SPI_DI;
 		end
 
+		osd_we<=1'b0;
 		// command 0x20: OSDCMDWRITE
 		if((cmd[7:3] == 5'b00100) && (cnt2 == 15)) begin
-			osd_buffer[bcnt] <= {sbuf[6:0], SPI_DI};
+			osd_we<=1'b1;
+			osd_waddr<=bcnt;
+			osd_d <= {sbuf[6:0],SPI_DI};
+//			osd_buffer[bcnt] <= {sbuf[6:0], SPI_DI};
 			bcnt <= bcnt + 1'd1;
 		end
 	end
@@ -195,8 +215,8 @@ wire [10:0] osd_hcnt_next2 = osd_hcnt + 2'd2;  // two pixel offset for osd byte 
 reg        osd_de;
 
 reg [10:0] osd_buffer_addr;
-wire [7:0] osd_byte = osd_buffer[osd_buffer_addr];
 reg        osd_pixel;
+
 
 always @(posedge clk_sys) begin
 	if(ce_pix) begin

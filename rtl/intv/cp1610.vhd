@@ -136,7 +136,7 @@ BEGIN
         nro<="111";
         wreg<='1';
         ro<=dr;
-        ASSERT dr(0)/='U' AND dr(0)/='X' REPORT "XXXX" SEVERITY error;
+--        ASSERT dr(0)/='U' AND dr(0)/='X' REPORT "XXXX" SEVERITY error;
         nri1<="111";
         
         --------------------------------
@@ -170,7 +170,7 @@ BEGIN
       WHEN sFETCH3 =>
         bdic_i<=B_DTB;
         op<=dr(9 DOWNTO 0);
-        ASSERT dr(0)/='U' AND dr(0)/='X' REPORT "XXXX" SEVERITY error;
+--        ASSERT dr(0)/='U' AND dr(0)/='X' REPORT "XXXX" SEVERITY error;
         state<=sFETCH4;
         nri1<="111";
         
@@ -336,7 +336,7 @@ BEGIN
       WHEN sDIRECT3 =>
         bdic_i<=B_ADAR;
         dw_i<=dr;
-        ASSERT dr(0)/='U' AND dr(0)/='X' REPORT "XXXX" SEVERITY error;
+--        ASSERT dr(0)/='U' AND dr(0)/='X' REPORT "XXXX" SEVERITY error;
         op2<=dr(9 DOWNTO 0);
         state<=sDIRECT4;
         
@@ -367,14 +367,14 @@ BEGIN
             sdbd2<=sdbd;
             state<=sDIRECT1;
           ELSIF sdbd2_r='1' THEN
-            ASSERT dr(0)/='U' AND dr(0)/='X' REPORT "XXXX" SEVERITY error;
+--            ASSERT dr(0)/='U' AND dr(0)/='X' REPORT "XXXX" SEVERITY error;
             alu(op_r,dr(7 DOWNTO 0) & op2_r(7 DOWNTO 0),ri2_r,ro_v,szoc_r,szoc_v,false);
             ro<=ro_v;
             szoc<=szoc_v;
             wreg<='1';
             state<=sDIRECT6;
           ELSE
-            ASSERT dr(0)/='U' AND dr(0)/='X' REPORT "XXXX" SEVERITY error;
+--            ASSERT dr(0)/='U' AND dr(0)/='X' REPORT "XXXX" SEVERITY error;
             alu(op_r,dr,ri2_r,ro_v,szoc_r,szoc_v,false);
             ro<=ro_v;
             szoc<=szoc_v;
@@ -460,13 +460,13 @@ BEGIN
         ELSE
           bdic_i<=B_DTB;
           IF sdbd_r='1' THEN
-            ASSERT dr(0)/='U' AND dr(0)/='X' REPORT "XXXX" SEVERITY error;
+--            ASSERT dr(0)/='U' AND dr(0)/='X' REPORT "XXXX" SEVERITY error;
             op2<=dr(9 DOWNTO 0);
             state<=sINDIRECT1;
             sdbd<='0';
             sdbd2<=sdbd_r;
           ELSIF sdbd2_r='1' THEN
-            ASSERT dr(0)/='U' AND dr(0)/='X' REPORT "XXXX" SEVERITY error;
+ --           ASSERT dr(0)/='U' AND dr(0)/='X' REPORT "XXXX" SEVERITY error;
             alu(op_r,dr(7 DOWNTO 0) & op2_r(7 DOWNTO 0),ri2_r,ro_v,szoc_r,szoc_v,false);
             ro<=ro_v;
             nro<=op_r(2 DOWNTO 0);
@@ -474,7 +474,7 @@ BEGIN
             wreg<='1';
             state<=sINDIRECT4;
           ELSE
-            ASSERT dr(0)/='U' AND dr(0)/='X' REPORT "XXXX" SEVERITY error;
+--            ASSERT dr(0)/='U' AND dr(0)/='X' REPORT "XXXX" SEVERITY error;
             alu(op_r,dr,ri2_r,ro_v,szoc_r,szoc_v,false);
             ro<=ro_v;
             nro<=op_r(2 DOWNTO 0);
@@ -527,7 +527,7 @@ BEGIN
         
       WHEN sCBRANCH3 =>
         bdic_i<=B_DTB;
-        ASSERT dr(0)/='U' AND dr(0)/='X' REPORT "XXXX" SEVERITY error;
+--        ASSERT dr(0)/='U' AND dr(0)/='X' REPORT "XXXX" SEVERITY error;
         disp<=dr;
         IF bcond(op_r,szoc_r,ebci) THEN
           state<=sCBRANCH4;
@@ -572,7 +572,7 @@ BEGIN
         
       WHEN sJUMP3 =>
         bdic_i<=B_DTB;
-        ASSERT dr(0)/='U' AND dr(0)/='X' REPORT "XXXX" SEVERITY error;
+--        ASSERT dr(0)/='U' AND dr(0)/='X' REPORT "XXXX" SEVERITY error;
         op2<=dr(9 DOWNTO 0);
         state<=sJUMP4;
         
@@ -598,7 +598,7 @@ BEGIN
         
       WHEN sJUMP7 =>
         bdic_i<=B_DTB;
-        ASSERT dr(0)/='U' AND dr(0)/='X' REPORT "XXXX" SEVERITY error;
+--        ASSERT dr(0)/='U' AND dr(0)/='X' REPORT "XXXX" SEVERITY error;
         op3<=dr(9 DOWNTO 0);
         state<=sJUMP8;
         nri1<="111";
@@ -662,7 +662,7 @@ BEGIN
       WHEN sINTR6 =>
         bdic_i<=B_IAB;
         nro<="111";
-        ASSERT dr(0)/='U' AND dr(0)/='X' REPORT "XXXX" SEVERITY error;
+--        ASSERT dr(0)/='U' AND dr(0)/='X' REPORT "XXXX" SEVERITY error;
         ro<=dr;
         wreg<='1';
         state<=sINTR7;

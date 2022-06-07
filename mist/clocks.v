@@ -22,6 +22,26 @@ pll pll (
     .locked(locked)
 );
 
+reg ntsc=1'b0;
+reg [23:0] debounce;
+reg pal_d3=1'b0;
+reg pal_d2=1'b0;
+reg pal_d=1'b0;
+
+always @(posedge clk_i) begin
+	pal_d3<=pal;
+	pal_d2<=pal_d3;
+	pal_d<=pal_d2;
+	
+	if(pal_d2 != pal_d)
+		debounce<=1'b0;
+	else if(&debounce)
+		ntsc<=~pal_d;
+	else
+		debounce<=debounce+1'b1;
+
+end
+
 wire       pll_reconfig_busy;
 wire       pll_areset;
 wire       pll_configupdate;
@@ -55,7 +75,7 @@ rom_reconfig_ntsc rom_reconfig_ntsc
     .q(q_reconfig_ntsc)
 );
 
-assign pll_rom_q = pal ? q_reconfig_pal : q_reconfig_ntsc;
+assign pll_rom_q = ntsc ? q_reconfig_ntsc : q_reconfig_pal;
 
 pll_reconfig pll_reconfig_inst
 (
@@ -82,8 +102,6 @@ pll_reconfig pll_reconfig_inst
     .write_param(0),
     .write_rom_ena(pll_write_rom_ena)
 );
-
-wire ntsc = ~pal;
 
 always @(posedge clk_i) begin
     reg ntsc_d, ntsc_d2, ntsc_d3;
