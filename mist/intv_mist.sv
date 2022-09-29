@@ -33,6 +33,9 @@ module intv_mist
 `ifdef DEMISTIFY_HDMI
 	output        VGA_CLK,
 	output        VGA_WINDOW,
+   output        VGA_PIXEL,
+   output        CORE_CLK,
+>>>>>>> Bumped DeMistify, changed cart loading, so .rom files should now work.
 `endif
 
 `ifdef USE_HDMI
@@ -334,7 +337,12 @@ wire cart_download = ioctl_download && ioctl_index[5:0]==5'b1 ? 1'b1 : 1'b0;
 wire cart_req, cart_ack;
 wire cart_stb;
 wire [15:0] cart_addr;
-wire [15:0] cart_dout;
+wire [15:0] cart_to_ram;
+wire [15:0] cart_from_ram;
+wire cart_wr;
+reg cart_wr_l;
+wire [1:0] cart_dm;
+reg [1:0] cart_dm_l;
 
 wire rom_download = ioctl_download && ioctl_index[5:0]==5'b0 ? 1'b1 : 1'b0;
 wire rom_req, rom_ack;
@@ -389,11 +397,15 @@ intv_core intv_core
     .audio_r(raud),
     .cart_addr(cart_addr),
     .cart_stb(cart_stb),
-    .cart_in(cart_dout),
+    .cart_in(cart_from_ram),
+	 .cart_out(cart_to_ram),
+	 .cart_dm(cart_dm),
     .rom_addr(rom_addr),
     .rom_stb(rom_stb),
     .rom_in(rom_dout)
 );
+
+assign cart_wr = |cart_dm;
 
 wire sdram_drive_dq;
 wire [15:0] sdram_dq_in,sdram_dq_out;
@@ -411,8 +423,16 @@ assign sdram_dq_in = SDRAM_DQ;
 always @(posedge clk_sys) begin
 	if ((rom_stb && !ioctl_download) || (rom_download && ioctl_wr))
 		rom_req<=~rom_ack;
-	if ((cart_stb && !ioctl_download) || (cart_download && ioctl_wr))
+//	if ((cart_stb && !ioctl_download) || (cart_download && ioctl_wr))
+
+	if(cart_req==cart_ack)
+		cart_wr_l<=1'b0;
+	if (cart_stb) begin
 		cart_req<=~cart_ack;
+		cart_wr_l<=cart_wr;
+		cart_dm_l<=cart_dm;
+	end
+		
 end
 
 assign SDRAM_CKE=1'b1;
@@ -443,12 +463,13 @@ sdram_amr #(.SDRAM_tCK(23800)) sdram (
 	.rom_ack (rom_ack),
 	.rom_we (rom_download),
 
-	.cart_addr(cart_download ? ioctl_addr[21:0] : {cart_addr,1'b0}),
-	.cart_dout(cart_dout),
-	.cart_din (ioctl_dout),
+	.cart_addr({cart_addr,1'b0}),
+	.cart_dout(cart_from_ram),
+	.cart_din (cart_to_ram),
 	.cart_req (cart_req),
 	.cart_ack (cart_ack),
-	.cart_we (cart_download)
+	.cart_we (cart_wr_l),
+	.cart_dm (cart_dm_l)
 );
 
 
@@ -514,7 +535,11 @@ mist_video #(.COLOR_DEPTH(8), .OUT_COLOR_DEPTH(VGA_BITS), .OSD_COLOR(3'd5), .SD_
 	// 0 = HVSync 31KHz, 1 = CSync 15KHz
 	.scandoubler_disable ( tv15khz ),
 	// disable csync without scandoubler
+`ifdef DEMISTIFY_HDMI
+	.no_csync    ( 1'b1 ),
+`else
 	.no_csync    ( nocsync ),
+`endif
 	// YPbPr always uses composite sync
 	.ypbpr       ( ypbpr ),
 	// Rotate OSD [0] - rotate [1] - left or right
@@ -601,4 +626,14 @@ mist_video #(.COLOR_DEPTH(8), .SD_HCNT_WIDTH(10), .USE_BLANKS(1), .OUT_COLOR_DEP
 assign HDMI_PCLK = clk_sys;
 `endif
 
+`ifdef DEMISTIFY
+assign CORE_CLK = clk_sys;
+
+reg [3:0] pdiv;
+always @(posedge clk_sys) begin
+	pdiv <= pdiv + 1'b1;
+	VGA_PIXEL <= tv15khz ? &pdiv[1:0] : pdiv[0];
+end
+`endif
+	
 endmodule

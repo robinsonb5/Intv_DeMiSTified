@@ -56,14 +56,16 @@ ENTITY intv_core IS
 	 cart_addr         : out unsigned(15 downto 0);
 	 cart_stb          : out std_logic;
 	 cart_in           : in std_logic_vector(15 downto 0);
+	 cart_out          : out std_logic_vector(15 downto 0);
+	 cart_dm           : out std_logic_vector(1 downto 0);
 
-	 rom_addr         : out unsigned(15 downto 0);
-	 rom_stb          : out std_logic;
-	 rom_in           : in std_logic_vector(15 downto 0);
-	 
+	 rom_addr          : out unsigned(15 downto 0);
+	 rom_stb           : out std_logic;
+	 rom_in            : in std_logic_vector(15 downto 0);
+
     -- AUDIO
-    audio_l          : OUT   std_logic_vector(15 DOWNTO 0);
-    audio_r          : OUT   std_logic_vector(15 DOWNTO 0)
+    audio_l           : OUT   std_logic_vector(15 DOWNTO 0);
+    audio_r           : OUT   std_logic_vector(15 DOWNTO 0)
     );
 END intv_core;
 
@@ -349,7 +351,7 @@ BEGIN
 	   tick_cpu_d <= tick_cpu & tick_cpu_d(3 downto 1);
 
 		cart_stb<='0';
-		if cart_acc='1' and tick_cpu_d(0)='1' then
+		if (cart_acc='1' and tick_cpu_d(0)='1' and ioctl_download='0') or w_wrl='1' or w_wrh='1' then
 		  cart_stb<='1';
 		end if;
 
@@ -538,7 +540,6 @@ BEGIN
       idx<=to_integer(ad(15 DOWNTO 11)) + 32 * mmap;
       
 --      cad<=(imap + ad(10 DOWNTO 8)) & ad(7 DOWNTO 0);
-      cart_addr<=(imap + ad(10 DOWNTO 8)) & ad(7 DOWNTO 0);
       
       rden<=to_unsigned(iacc,4)(0);
       wren<=to_unsigned(iacc,4)(1);
@@ -664,7 +665,7 @@ BEGIN
   BEGIN
     IF rising_edge(clksys) THEN
       ioctl_wr2<=ioctl_wr;
-      wr_v:=ioctl_wr AND NOT ioctl_wait_l;
+      wr_v:=ioctl_wr; -- AND NOT ioctl_wait_l;
       
       IF ioctl_download='0' AND state/=sROM THEN
         state<=sIDLE;
@@ -692,8 +693,9 @@ BEGIN
         WHEN sIDLE =>
           w_a<=(OTHERS =>'0');
           IF ioctl_download='1' THEN
-            ioctl_wait_l<='1';
-            state<=sCLR;
+--            ioctl_wait_l<='1';
+--            state<=sCLR;
+            state<=sDOWN;
           END IF;
           rom_exec_up<='0';
           rom_grom_up<='0';
@@ -885,9 +887,21 @@ BEGIN
            (x"FF" & unsigned(cart_in(7 downto 0)))    WHEN cart_acc='1' AND byen='1' ELSE x"FFFF";
   
   cart_acc<=rden AND fine;
-  
-  ----------------------------------------------------------
-  -- Icart memory
+
+-----------------------------------------------------------
+-- Cartridge memory in SDRAM
+
+cart_addr<=w_a when ioctl_download='1' else (imap + ad(10 DOWNTO 8)) & ad(7 DOWNTO 0);
+
+carth1: process(clksys) begin
+	if rising_edge(clksys) then
+		cart_dm<=w_wrh & w_wrl;
+		cart_out <= std_logic_vector(w_d) & std_logic_vector(w_d);
+	end if;
+end process;
+
+----------------------------------------------------------
+-- Icart memory
 --  CartH1:PROCESS(clksys) IS
 --  BEGIN
 --    IF rising_edge(clksys) THEN

@@ -74,11 +74,12 @@ module sdram_amr #(parameter SDRAM_tCK=17850 )
 	input             char_we,
 
 	input      [21:0] cart_addr,
-	input       [7:0] cart_din,
+	input      [15:0] cart_din,
 	output reg [15:0] cart_dout,
 	input             cart_req,
 	output reg        cart_ack,
 	input             cart_we,
+	input       [1:0] cart_dm,
 
 	input             vram0_req,
 	output reg        vram0_ack,
@@ -421,8 +422,8 @@ end
 // CART has Bank 1 to itself
 always @(posedge clk) begin
 	if ((!force_refresh[1]) && cart_req ^ port_state[PORT_CART]) begin
-		bankdqm[1]<=cart_we ? { cart_addr[0], ~cart_addr[0] } : 2'b11;
-		bankwrdata[1]<={cart_din,cart_din};
+		bankdqm[1]<=cart_we ? ~cart_dm : 2'b11;
+		bankwrdata[1]<=cart_din;
 		bankreq[1]<=1'b1;
 		bankstate[1]<=cart_req;
 		bankport[1]<=PORT_CART;
@@ -434,8 +435,8 @@ always @(posedge clk) begin
 		bankstate[1]<=1'b0;
 		bankaddr[1][`SDRAM_COLBITS:1]<=cart_addr[`SDRAM_COLBITS:1]; // Don't care bits map to another port
 		bankaddr[1][23:`SDRAM_COLBITS+1]<={1'b0,refresh_addr_0};//,{`SDRAM_COLBITS{1'b0}}};
-		bankdqm[1]<=cart_we ? { cart_addr[0], ~cart_addr[0] } : 2'b11;
-		bankwrdata[1]<={cart_din,cart_din};
+		bankdqm[1]<=cart_we ? ~cart_dm : 2'b11;
+		bankwrdata[1]<=cart_din;
 		bankwr[1]<=1'b0;
 		bankport[1]<=PORT_REFRESH;
 	end
