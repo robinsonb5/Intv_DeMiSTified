@@ -155,15 +155,14 @@ ARCHITECTURE struct OF intv_core IS
     m   : uint4;
   END RECORD;
   TYPE arr_jmap IS ARRAY (natural RANGE <>) OF type_jmap;
-  CONSTANT MAPS : arr_jmap(0 to 34) := (
+  CONSTANT MAPS : arr_jmap(0 to 35) := (
     (x"4CC46A04",1),(x"D5F038B6",1),(x"A3ACD160",1),(x"4422868E",1),
     (x"C2063C08",1),(x"A12C27E1",1),
     (x"515E1D7E",2),(x"0BF464C6",2),(x"3289C8BA",2),(x"16BFB8EB",2),
     (x"6802B191",2),(x"13EE56F1",2),(x"FF83FF80",2),(x"2C5FD5FA",2),
     (x"632F6ADF",2),(x"B745C1CA",2),(x"BB939881",2),(x"800B572F",2),
-    (x"32076E9D",2),(x"A95021FC",2),
+    (x"32076E9D",2),(x"A95021FC",2),(x"3825C25B",2),(x"23DC808D",2),
     (x"D1D352A0",3),
-    (x"3825C25B",4),
     (x"4B23A757",5),(x"D8F99AA2",5),(x"159AF7F7",5),(x"A21C31C3",5),
     (x"6E4E8EB4",5),
     (x"D5363B8C",6),

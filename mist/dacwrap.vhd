@@ -1,6 +1,8 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+library mist;
+use mist.all;
 
 entity dacwrap is
 port (
@@ -17,7 +19,7 @@ architecture rtl of dacwrap is
 
 begin
 
-ldac : entity work.dac
+ldac : mist.dac
 generic map(C_bits => 16)
 port map (
 	clk_i => clk,
@@ -26,7 +28,7 @@ port map (
 	dac_o => q_l
 );
 
-rdac : entity work.dac
+rdac : dac
 generic map(C_bits => 16)
 port map (
 	clk_i => clk,
