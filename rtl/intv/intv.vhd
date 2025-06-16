@@ -991,8 +991,10 @@ end process;
   -- IO MAPPING
   
   PROCESS (key_1,key_2,key_3,key_4,key_5,key_6,key_7,key_8,key_9,
-           key_0,key_r,key_w,key_space,key_enter,swap,
-           joystick_0,joystick_1,joystick_analog_0,joystick_analog_1) IS
+           key_0,key_r,key_w,key_space,key_enter,swap, key_up, key_down,
+			  key_left,key_right,key_lctrl,key_rctrl,key_lshift,key_rshift, keypad,
+			  key_period,key_k0,key_k1,key_k2,key_k3,key_k4,key_k5,key_k6,key_k7,key_k8,key_k9,
+           joystick_0,joystick_1,joystick_analog_0,joystick_analog_1,ecs) IS
     CONSTANT dirtable : arr_uv8(0 TO 15):= (-- NSWE
       x"00", -- 0000 : no press
       x"02", -- 0001 : E

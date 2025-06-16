@@ -888,7 +888,7 @@ BEGIN
   ------------------------------------------------------------------------------
   -- Memory blocks address selection
   MemAdrs:PROCESS(cyc,hpos,vpos,delay_h,delay_v,
-                  r_y,r_a,r_sysram) IS
+                  r_y,r_a,r_sysram,csmode) IS
   BEGIN
     a_sysram<=cartadrs(hpos,vpos,delay_h,delay_v);
     a_mob<=0;

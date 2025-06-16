@@ -96,7 +96,7 @@ BEGIN
   
   ------------------------------------------------------------------------------
   Comb:PROCESS(intm_r,dw_r,state_r,op_r,nri1_r,nri2_r,szoc_r,disp_r,ri1_r,ri2_r,
-               sdbd_r,sdbd2_r,inter,op2_r,op3_r,dr,bdrdy,
+               sdbd_r,sdbd2_r,inter,op2_r,op3_r,dr,bdrdy, ro_r, sdbd,
                busrq,ebci) IS
     VARIABLE szoc_v : type_szoc;
     VARIABLE ro_v : uv16;
