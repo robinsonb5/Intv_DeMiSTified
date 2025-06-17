@@ -35,7 +35,6 @@ module intv_mist
 	output        VGA_WINDOW,
    output        VGA_PIXEL,
    output        CORE_CLK,
->>>>>>> Bumped DeMistify, changed cart loading, so .rom files should now work.
 `endif
 
 `ifdef USE_HDMI
